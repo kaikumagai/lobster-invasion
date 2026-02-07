@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🦞 Lobster Invasion</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Bungee&family=Press+Start+2P&family=Bangers&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0a;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  font-family: 'Press Start 2P', monospace;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(180deg, #1a0a2e 0%, #16213e 40%, #0f3460 100%);
+}
+
+/* Animated grid floor */
+#game-container::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
+  background: 
+    repeating-linear-gradient(90deg, transparent, transparent 79px, rgba(0,255,200,0.08) 79px, rgba(0,255,200,0.08) 80px),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(0,255,200,0.08) 39px, rgba(0,255,200,0.08) 40px);
+  transform: perspective(500px) rotateX(60deg);
+  transform-origin: bottom;
+  z-index: 0;
+}
+
+/* Office zone (right side danger zone) */
+#office-zone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 80px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,0,60,0.15));
+  border-left: 2px dashed rgba(255,0,60,0.5);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.office-icon {
+  font-size: 28px;
+  opacity: 0.5;
+  animation: pulse-office 2s ease-in-out infinite;
+}
+
+@keyframes pulse-office {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+  background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+#score-display {
+  font-family: 'Bangers', cursive;
+  font-size: 28px;
+  color: #00ffc8;
+  text-shadow: 0 0 10px rgba(0,255,200,0.5);
+  letter-spacing: 2px;
+}
+
+#wave-display {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: #ff6b6b;
+  text-shadow: 0 0 8px rgba(255,107,107,0.5);
+}
+
+#combo-display {
+  font-family: 'Bangers', cursive;
+  font-size: 24px;
+  color: #ffd93d;
+  text-shadow: 0 0 10px rgba(255,217,61,0.5);
+  transition: transform 0.1s;
+}
+
+#combo-display.pop {
+  transform: scale(1.4);
+}
+
+/* Lobster entity */
+.lobster {
+  position: absolute;
+  font-size: 40px;
+  cursor: pointer;
+  z-index: 10;
+  transition: none;
+  filter: drop-shadow(0 0 8px rgba(255,50,50,0.4));
+  animation: lobster-walk 0.3s steps(2) infinite;
+}
+
+.lobster:hover {
+  filter: drop-shadow(0 0 15px rgba(255,255,0,0.8));
+  transform: scale(1.15);
+}
+
+@keyframes lobster-walk {
+  0% { transform: translateY(0px) scaleX(-1); }
+  50% { transform: translateY(-3px) scaleX(-1); }
+  100% { transform: translateY(0px) scaleX(-1); }
+}
+
+/* Click explosion */
+.click-explode {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+  font-family: 'Bangers', cursive;
+  font-size: 22px;
+  color: #ffd93d;
+  text-shadow: 0 0 6px rgba(255,217,61,0.8);
+  animation: explode-up 0.8s ease-out forwards;
+}
+
+@keyframes explode-up {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+}
+
+/* Particle on kill */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 40;
+  border-radius: 50%;
+  animation: particle-fly 0.6s ease-out forwards;
+}
+
+@keyframes particle-fly {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0); }
+}
+
+/* Screen shake */
+.shake {
+  animation: screen-shake 0.4s ease-out;
+}
+
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0,0); }
+  10% { transform: translate(-10px, 6px); }
+  20% { transform: translate(8px, -8px); }
+  30% { transform: translate(-6px, 4px); }
+  40% { transform: translate(6px, -4px); }
+  50% { transform: translate(-4px, 6px); }
+  60% { transform: translate(4px, -2px); }
+  70% { transform: translate(-2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  90% { transform: translate(-1px, 1px); }
+}
+
+/* Title screen */
+#title-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #1a0a2e 0%, #0a0a0a 100%);
+}
+
+#title-screen h1 {
+  font-family: 'Bungee Shade', cursive;
+  font-size: clamp(32px, 7vw, 72px);
+  color: #ff3c3c;
+  text-shadow: 0 0 30px rgba(255,60,60,0.6), 0 0 60px rgba(255,60,60,0.3);
+  margin-bottom: 10px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+#title-screen .subtitle {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(8px, 1.8vw, 14px);
+  color: #00ffc8;
+  margin-bottom: 40px;
+  text-align: center;
+  opacity: 0.8;
+  max-width: 90%;
+}
+
+#title-screen .big-lobster {
+  font-size: clamp(60px, 15vw, 120px);
+  margin-bottom: 30px;
+  animation: title-bob 2s ease-in-out infinite;
+}
+
+@keyframes title-bob {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+#start-btn {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(16px, 3vw, 24px);
+  padding: 16px 48px;
+  background: linear-gradient(135deg, #ff3c3c, #ff6b6b);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  box-shadow: 0 0 30px rgba(255,60,60,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: all 0.2s;
+  pointer-events: auto;
+}
+
+#start-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 50px rgba(255,60,60,0.6);
+}
+
+#start-btn:active {
+  transform: scale(0.95);
+}
+
+.title-hint {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: rgba(255,255,255,0.3);
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* Game Over screen */
+#gameover-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10,0,0,0.92);
+  backdrop-filter: blur(6px);
+}
+
+#gameover-screen h1 {
+  font-family: 'Bungee Shade', cursive;
+  font-size: clamp(28px, 6vw, 56px);
+  color: #ff3c3c;
+  text-shadow: 0 0 30px rgba(255,60,60,0.6);
+  margin-bottom: 10px;
+}
+
+#death-message {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(9px, 1.5vw, 13px);
+  color: #ffd93d;
+  margin-bottom: 30px;
+  text-align: center;
+  max-width: 80%;
+  line-height: 1.8;
+}
+
+#final-score {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(36px, 7vw, 64px);
+  color: #00ffc8;
+  text-shadow: 0 0 20px rgba(0,255,200,0.5);
+  margin-bottom: 8px;
+}
+
+#final-stats {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 30px;
+  text-align: center;
+  line-height: 2;
+}
+
+#restart-btn {
+  font-family: 'Bungee', cursive;
+  font-size: clamp(14px, 2.5vw, 20px);
+  padding: 14px 40px;
+  background: linear-gradient(135deg, #ff3c3c, #ff6b6b);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  box-shadow: 0 0 30px rgba(255,60,60,0.4);
+  transition: all 0.2s;
+}
+
+#restart-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 50px rgba(255,60,60,0.6);
+}
+
+/* Wave announcement */
+#wave-announce {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 150;
+  font-family: 'Bungee Shade', cursive;
+  font-size: clamp(32px, 6vw, 60px);
+  color: #ff3c3c;
+  text-shadow: 0 0 30px rgba(255,60,60,0.8);
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#wave-subtitle {
+  position: absolute;
+  top: calc(50% + 50px);
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 150;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(8px, 1.5vw, 12px);
+  color: #ffd93d;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+}
+
+/* Floating background lobsters */
+.bg-lobster {
+  position: absolute;
+  opacity: 0.04;
+  font-size: 80px;
+  z-index: 0;
+  animation: float-bg 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes float-bg {
+  0% { transform: translateX(-100px) rotate(0deg); }
+  100% { transform: translateX(calc(100vw + 100px)) rotate(360deg); }
+}
+
+/* Boss lobster */
+.lobster.boss {
+  font-size: 70px;
+  filter: drop-shadow(0 0 15px rgba(255,0,0,0.7)) hue-rotate(30deg);
+}
+
+.lobster.fast {
+  animation: lobster-walk 0.15s steps(2) infinite;
+}
+
+.lobster.tiny {
+  font-size: 24px;
+}
+</style>
+</head>
+<body>
+<div id="game-container">
+  <!-- Office danger zone -->
+  <div id="office-zone">
+    <div class="office-icon">🏢</div>
+    <div class="office-icon">💼</div>
+    <div class="office-icon">🏢</div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="score-display">0</div>
+    <div id="combo-display"></div>
+    <div id="wave-display">WAVE 1</div>
+  </div>
+
+  <!-- Wave announcement -->
+  <div id="wave-announce"></div>
+  <div id="wave-subtitle"></div>
+
+  <!-- Title screen -->
+  <div id="title-screen">
+    <div class="big-lobster">🦞</div>
+    <h1>LOBSTER<br>INVASION</h1>
+    <div class="subtitle">AI is coming for your job. Click to survive.</div>
+    <button id="start-btn">PLAY</button>
+    <div class="title-hint">1 miss = you're fired</div>
+  </div>
+
+  <!-- Game Over screen -->
+  <div id="gameover-screen">
+    <h1>YOU'RE FIRED</h1>
+    <div id="death-message"></div>
+    <div id="final-score"></div>
+    <div id="final-stats"></div>
+    <button id="restart-btn">COPE AGAIN</button>
+  </div>
+</div>
+
+<script>
+// ============ SOUND ENGINE (Web Audio API - no files needed) ============
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playSound(type) {
+  if (!audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+
+    if (type === 'click') {
+      // Punchy pop/squish when clicking a lobster
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(600, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+
+      // Add a noise burst for "splat"
+      const bufSize = audioCtx.sampleRate * 0.06;
+      const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const noise = audioCtx.createBufferSource();
+      const noiseGain = audioCtx.createGain();
+      noise.buffer = buf;
+      noise.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+      noiseGain.gain.setValueAtTime(0.15, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      noise.start(now);
+    }
+
+    if (type === 'combo') {
+      // Rising chime for combos
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      const comboFreq = Math.min(400 + gameState.combo * 40, 1200);
+      osc.frequency.setValueAtTime(comboFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(comboFreq * 1.5, now + 0.1);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    }
+
+    if (type === 'boss_hit') {
+      // Meaty thud for boss damage
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+
+    if (type === 'wave_complete') {
+      // Victory jingle - 3 ascending notes
+      [0, 0.1, 0.2].forEach((delay, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime([523, 659, 784][i], now + delay);
+        gain.gain.setValueAtTime(0.15, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.15);
+      });
+    }
+
+    if (type === 'wave_start') {
+      // Alarm/siren sweep
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(200, now + 0.6);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.setValueAtTime(0.1, now + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc.start(now);
+      osc.stop(now + 0.6);
+    }
+
+    if (type === 'game_over') {
+      // Descending doom notes
+      [0, 0.15, 0.3, 0.5].forEach((delay, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime([400, 350, 250, 120][i], now + delay);
+        gain.gain.setValueAtTime(0.2, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.25);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.25);
+      });
+      // Low rumble
+      const rumble = audioCtx.createOscillator();
+      const rGain = audioCtx.createGain();
+      rumble.connect(rGain);
+      rGain.connect(audioCtx.destination);
+      rumble.type = 'sine';
+      rumble.frequency.setValueAtTime(60, now + 0.3);
+      rumble.frequency.exponentialRampToValueAtTime(20, now + 1.2);
+      rGain.gain.setValueAtTime(0.25, now + 0.3);
+      rGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      rumble.start(now + 0.3);
+      rumble.stop(now + 1.2);
+    }
+
+    if (type === 'spawn') {
+      // Subtle blip when lobster appears
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    }
+
+    if (type === 'start') {
+      // Arcade coin-insert style
+      [0, 0.08, 0.16].forEach((delay, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime([880, 1100, 1320][i], now + delay);
+        gain.gain.setValueAtTime(0.12, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.1);
+      });
+    }
+
+  } catch (e) {
+    // Silently fail - audio is non-critical
+  }
+}
+// ============ END SOUND ENGINE ============
+
+const container = document.getElementById('game-container');
+const titleScreen = document.getElementById('title-screen');
+const gameoverScreen = document.getElementById('gameover-screen');
+const scoreDisplay = document.getElementById('score-display');
+const comboDisplay = document.getElementById('combo-display');
+const waveDisplay = document.getElementById('wave-display');
+const waveAnnounce = document.getElementById('wave-announce');
+const waveSubtitle = document.getElementById('wave-subtitle');
+const deathMessage = document.getElementById('death-message');
+const finalScore = document.getElementById('final-score');
+const finalStats = document.getElementById('final-stats');
+
+let gameState = {
+  running: false,
+  score: 0,
+  wave: 1,
+  combo: 0,
+  maxCombo: 0,
+  lobstersKilled: 0,
+  lobsters: [],
+  spawnTimer: null,
+  gameLoop: null,
+  waveTimer: null,
+  lobstersThisWave: 0,
+  lobstersNeeded: 0,
+  spawnInterval: 2000,
+  lobsterSpeed: 0.8,
+};
+
+const DEATH_MESSAGES = [
+  "A lobster took your desk.\nIt's already better at your job.",
+  "HR said the lobster has\n'more relevant experience'.",
+  "Your LinkedIn now says:\n'Open to opportunities (desperate)'",
+  "The lobster just automated\nyour entire department.",
+  "Plot twist: the lobster\nwas your replacement all along.",
+  "Your manager didn't even\nnotice you were gone.",
+  "The lobster negotiated\na higher salary than you had.",
+  "AI doesn't need coffee breaks.\nYou did. That was your mistake.",
+  "The lobster already shipped\nthe feature you've been working on for 6 months.",
+  "Don't worry, you can always\nlearn to code... oh wait.",
+  "The lobster just got promoted.\nTo YOUR position.",
+  "Your exit interview was\nconducted by a lobster.",
+  "The lobster is now training\nother lobsters to replace more humans.",
+  "At least you still have\nyour personality... for now.",
+  "The lobster wrote a Medium article\nabout replacing you. It went viral.",
+];
+
+const WAVE_SUBTITLES = [
+  "they're learning to code...",
+  "they've read your resume",
+  "they don't need lunch breaks",
+  "they just raised a seed round",
+  "they're on ProductHunt",
+  "they have 10x more github stars than you",
+  "they just got YC funding",
+  "they're disrupting your industry",
+  "they've automated HR",
+  "resistance is futile lol",
+  "they just IPO'd",
+  "they're the CEO now",
+  "they ARE the company",
+  "your skills are deprecated",
+  "even your mom uses their app",
+];
+
+function startGame() {
+  ensureAudio();
+  playSound('start');
+  titleScreen.style.display = 'none';
+  gameoverScreen.style.display = 'none';
+
+  // Clear existing lobsters
+  document.querySelectorAll('.lobster').forEach(l => l.remove());
+
+  gameState = {
+    running: true,
+    score: 0,
+    wave: 1,
+    combo: 0,
+    maxCombo: 0,
+    lobstersKilled: 0,
+    lobsters: [],
+    spawnTimer: null,
+    gameLoop: null,
+    waveTimer: null,
+    lobstersThisWave: 0,
+    lobstersNeeded: 5,
+    spawnInterval: 2200,
+    lobsterSpeed: 0.7,
+  };
+
+  updateHUD();
+  announceWave(1, () => {
+    startWave();
+    gameState.gameLoop = requestAnimationFrame(update);
+  });
+}
+
+function announceWave(waveNum, callback) {
+  const subtitle = WAVE_SUBTITLES[(waveNum - 1) % WAVE_SUBTITLES.length];
+  waveAnnounce.textContent = `WAVE ${waveNum}`;
+  waveSubtitle.textContent = subtitle;
+
+  waveAnnounce.style.opacity = '1';
+  waveSubtitle.style.opacity = '1';
+  waveAnnounce.style.transition = 'none';
+  waveSubtitle.style.transition = 'none';
+  waveAnnounce.style.transform = 'translate(-50%, -50%) scale(0.5)';
+
+  requestAnimationFrame(() => {
+    waveAnnounce.style.transition = 'all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+    waveAnnounce.style.transform = 'translate(-50%, -50%) scale(1)';
+  });
+
+  setTimeout(() => {
+    waveAnnounce.style.transition = 'opacity 0.5s';
+    waveSubtitle.style.transition = 'opacity 0.5s';
+    waveAnnounce.style.opacity = '0';
+    waveSubtitle.style.opacity = '0';
+    playSound('wave_start');
+    if (callback) callback();
+  }, 1500);
+}
+
+function startWave() {
+  gameState.lobstersThisWave = 0;
+  const wave = gameState.wave;
+
+  // Scale difficulty
+  gameState.lobstersNeeded = 5 + Math.floor(wave * 2.5);
+  gameState.spawnInterval = Math.max(400, 2200 - wave * 150);
+  gameState.lobsterSpeed = 0.7 + wave * 0.18;
+
+  spawnLobster();
+  gameState.spawnTimer = setInterval(() => {
+    if (!gameState.running) return;
+    if (gameState.lobstersThisWave < gameState.lobstersNeeded) {
+      spawnLobster();
+      // Occasional double spawn in later waves
+      if (wave >= 3 && Math.random() < 0.2) {
+        setTimeout(spawnLobster, 200);
+      }
+      if (wave >= 6 && Math.random() < 0.15) {
+        setTimeout(spawnLobster, 400);
+      }
+    }
+  }, gameState.spawnInterval);
+}
+
+function spawnLobster() {
+  if (!gameState.running) return;
+  gameState.lobstersThisWave++;
+
+  const el = document.createElement('div');
+  el.className = 'lobster';
+
+  const wave = gameState.wave;
+  let speed = gameState.lobsterSpeed * (0.8 + Math.random() * 0.4);
+  let emoji = '🦞';
+  let hp = 1;
+
+  // Variety in later waves
+  const roll = Math.random();
+  if (wave >= 4 && roll < 0.1) {
+    // Boss lobster
+    el.classList.add('boss');
+    speed *= 0.6;
+    hp = 3;
+    emoji = '🦞';
+  } else if (wave >= 3 && roll < 0.25) {
+    // Fast lobster
+    el.classList.add('fast');
+    speed *= 1.6;
+  } else if (wave >= 5 && roll < 0.35) {
+    // Tiny lobster
+    el.classList.add('tiny');
+    speed *= 1.3;
+  }
+
+  el.textContent = emoji;
+
+  const maxY = container.clientHeight - 80;
+  const y = 60 + Math.random() * (maxY - 60);
+  el.style.left = '-50px';
+  el.style.top = y + 'px';
+
+  const lobster = {
+    el,
+    x: -50,
+    y,
+    speed,
+    hp,
+    maxHp: hp,
+    alive: true,
+  };
+
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hitLobster(lobster);
+  });
+
+  container.appendChild(el);
+  gameState.lobsters.push(lobster);
+  playSound('spawn');
+}
+
+function hitLobster(lobster) {
+  if (!lobster.alive || !gameState.running) return;
+
+  lobster.hp--;
+
+  if (lobster.hp <= 0) {
+    lobster.alive = false;
+    gameState.combo++;
+    gameState.lobstersKilled++;
+    if (gameState.combo > gameState.maxCombo) gameState.maxCombo = gameState.combo;
+
+    const comboMult = Math.min(gameState.combo, 20);
+    const points = 10 * gameState.wave * comboMult;
+    gameState.score += points;
+
+    playSound('click');
+    if (gameState.combo > 1) playSound('combo');
+
+    // Spawn particles
+    spawnParticles(lobster.x, lobster.y);
+
+    // Show points
+    showPointsPopup(lobster.x, lobster.y, points, comboMult);
+
+    // Remove lobster
+    lobster.el.remove();
+
+    // Check wave completion
+    const alive = gameState.lobsters.filter(l => l.alive);
+    if (alive.length === 0 && gameState.lobstersThisWave >= gameState.lobstersNeeded) {
+      nextWave();
+    }
+  } else {
+    // Boss hit feedback
+    playSound('boss_hit');
+    lobster.el.style.filter = 'drop-shadow(0 0 20px rgba(255,255,0,1)) brightness(2)';
+    setTimeout(() => {
+      if (lobster.el.parentNode) {
+        lobster.el.style.filter = lobster.maxHp > 1
+          ? 'drop-shadow(0 0 15px rgba(255,0,0,0.7)) hue-rotate(30deg)'
+          : '';
+      }
+    }, 100);
+  }
+
+  updateHUD();
+}
+
+function nextWave() {
+  clearInterval(gameState.spawnTimer);
+  playSound('wave_complete');
+
+  // Wave complete bonus
+  const bonus = 500 * gameState.wave;
+  gameState.score += bonus;
+  gameState.wave++;
+
+  updateHUD();
+
+  setTimeout(() => {
+    if (!gameState.running) return;
+    gameState.lobsters = [];
+    announceWave(gameState.wave, () => {
+      startWave();
+    });
+  }, 1000);
+}
+
+function spawnParticles(x, y) {
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 4 + Math.random() * 6;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    const colors = ['#ff3c3c', '#ff6b6b', '#ffd93d', '#00ffc8', '#ff9f43'];
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 60;
+    p.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 600);
+  }
+}
+
+function showPointsPopup(x, y, points, combo) {
+  const popup = document.createElement('div');
+  popup.className = 'click-explode';
+  popup.innerHTML = `+${points}` + (combo > 1 ? `<br><span style="font-size:14px;color:#ff6b6b">${combo}x COMBO</span>` : '');
+  popup.style.left = x + 'px';
+  popup.style.top = (y - 20) + 'px';
+  container.appendChild(popup);
+  setTimeout(() => popup.remove(), 800);
+}
+
+function gameOver() {
+  gameState.running = false;
+  clearInterval(gameState.spawnTimer);
+  cancelAnimationFrame(gameState.gameLoop);
+  playSound('game_over');
+
+  // Screen shake
+  container.classList.add('shake');
+  setTimeout(() => container.classList.remove('shake'), 400);
+
+  // Flash red
+  container.style.boxShadow = 'inset 0 0 200px rgba(255,0,0,0.5)';
+  setTimeout(() => { container.style.boxShadow = 'none'; }, 300);
+
+  setTimeout(() => {
+    const msg = DEATH_MESSAGES[Math.floor(Math.random() * DEATH_MESSAGES.length)];
+    deathMessage.textContent = msg;
+    finalScore.textContent = gameState.score.toLocaleString();
+    finalStats.innerHTML = `Wave ${gameState.wave} · ${gameState.lobstersKilled} lobsters defeated · ${gameState.maxCombo}x max combo`;
+    gameoverScreen.style.display = 'flex';
+  }, 500);
+}
+
+function update() {
+  if (!gameState.running) return;
+
+  const rightEdge = container.clientWidth - 80;
+
+  for (const lobster of gameState.lobsters) {
+    if (!lobster.alive) continue;
+
+    lobster.x += lobster.speed;
+    lobster.el.style.left = lobster.x + 'px';
+
+    // Lobster reached the office!
+    if (lobster.x >= rightEdge) {
+      lobster.alive = false;
+      lobster.el.remove();
+      gameState.combo = 0;
+      updateHUD();
+      gameOver();
+      return;
+    }
+  }
+
+  // Clean dead lobsters from array periodically
+  if (Math.random() < 0.01) {
+    gameState.lobsters = gameState.lobsters.filter(l => l.alive);
+  }
+
+  gameState.gameLoop = requestAnimationFrame(update);
+}
+
+function updateHUD() {
+  scoreDisplay.textContent = gameState.score.toLocaleString();
+  waveDisplay.textContent = `WAVE ${gameState.wave}`;
+
+  if (gameState.combo > 1) {
+    comboDisplay.textContent = `${gameState.combo}x COMBO`;
+    comboDisplay.classList.add('pop');
+    setTimeout(() => comboDisplay.classList.remove('pop'), 100);
+  } else {
+    comboDisplay.textContent = '';
+  }
+}
+
+// Background floating lobsters
+function spawnBgLobsters() {
+  for (let i = 0; i < 5; i++) {
+    const bg = document.createElement('div');
+    bg.className = 'bg-lobster';
+    bg.textContent = '🦞';
+    bg.style.top = (Math.random() * 100) + '%';
+    bg.style.animationDelay = (Math.random() * 20) + 's';
+    bg.style.animationDuration = (15 + Math.random() * 20) + 's';
+    bg.style.fontSize = (40 + Math.random() * 60) + 'px';
+    container.appendChild(bg);
+  }
+}
+
+spawnBgLobsters();
+
+// Event listeners
+document.getElementById('start-btn').addEventListener('click', () => { ensureAudio(); startGame(); });
+document.getElementById('restart-btn').addEventListener('click', () => { ensureAudio(); startGame(); });
+
+// Prevent context menu on long press (mobile)
+document.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+</body>
+</html>
