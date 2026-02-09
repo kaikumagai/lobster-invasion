@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="x-ogp-key" content="6412171f-891d-4193-8761-26a874429aff" id="ogp-key-meta" />
 <title>🦞 Lobster Invasion</title>
+<script src="https://cdn.play.fun/sdk/latest/game-sdk.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Bungee&family=Press+Start+2P&family=Bangers&display=swap');
 
@@ -603,6 +604,57 @@ function playSound(type) {
 }
 // ============ END SOUND ENGINE ============
 
+// ============ PLAY.FUN SDK ============
+let playFunSDK = null;
+let sdkReady = false;
+
+async function initPlayFunSDK() {
+  try {
+    if (typeof PlayFunSDK !== 'undefined') {
+      playFunSDK = new PlayFunSDK({
+        gameId: 'a46a11ca-5ddf-4334-b4af-79d60c7dc42e',
+        ui: { usePointsWidget: true },
+      });
+      await playFunSDK.init();
+      sdkReady = true;
+      console.log('Play.fun SDK initialized!');
+    }
+  } catch (e) {
+    console.warn('Play.fun SDK init failed:', e);
+  }
+}
+
+function addPlayFunPoints(points) {
+  if (sdkReady && playFunSDK) {
+    playFunSDK.addPoints(points);
+  }
+}
+
+async function savePlayFunPoints() {
+  if (sdkReady && playFunSDK) {
+    try {
+      await playFunSDK.savePoints();
+      console.log('Points saved to Play.fun!');
+    } catch (e) {
+      console.warn('Failed to save points:', e);
+    }
+  }
+}
+
+// Initialize SDK on load
+initPlayFunSDK();
+
+// Auto-save points every 30 seconds
+setInterval(() => {
+  if (sdkReady && gameState.running) {
+    savePlayFunPoints();
+  }
+}, 30000);
+
+// Save on page close
+window.addEventListener('beforeunload', () => savePlayFunPoints());
+// ============ END PLAY.FUN SDK ============
+
 const container = document.getElementById('game-container');
 const titleScreen = document.getElementById('title-screen');
 const gameoverScreen = document.getElementById('gameover-screen');
@@ -825,6 +877,9 @@ function hitLobster(lobster) {
     const points = 10 * gameState.wave * comboMult;
     gameState.score += points;
 
+    // Send points to Play.fun
+    addPlayFunPoints(points);
+
     playSound('click');
     if (gameState.combo > 1) playSound('combo');
 
@@ -913,6 +968,9 @@ function gameOver() {
   clearInterval(gameState.spawnTimer);
   cancelAnimationFrame(gameState.gameLoop);
   playSound('game_over');
+
+  // Save final score to Play.fun
+  savePlayFunPoints();
 
   // Screen shake
   container.classList.add('shake');
