@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="x-ogp-key" content="6412171f-891d-4193-8761-26a874429aff" id="ogp-key-meta" />
 <title>🦞 Lobster Invasion</title>
-<script src="https://cdn.play.fun/sdk/latest/game-sdk.min.js"></script>
+<script src="https://sdk.play.fun/latest"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bungee+Shade&family=Bungee&family=Press+Start+2P&family=Bangers&display=swap');
 
@@ -610,14 +610,16 @@ let sdkReady = false;
 
 async function initPlayFunSDK() {
   try {
-    if (typeof PlayFunSDK !== 'undefined') {
-      playFunSDK = new PlayFunSDK({
+    if (typeof OpenGameSDK !== 'undefined') {
+      playFunSDK = new OpenGameSDK({
         gameId: 'a46a11ca-5ddf-4334-b4af-79d60c7dc42e',
         ui: { usePointsWidget: true },
       });
       await playFunSDK.init();
       sdkReady = true;
       console.log('Play.fun SDK initialized!');
+    } else {
+      console.warn('OpenGameSDK not found');
     }
   } catch (e) {
     console.warn('Play.fun SDK init failed:', e);
