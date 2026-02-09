@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="x-ogp-key" content="6412171f-891d-4193-8761-26a874429aff" id="ogp-key-meta" />
+<meta name="x-pf-key" content="6412171f-891d-4193-8761-26a874429aff" />
 <title>🦞 Lobster Invasion</title>
 <script src="https://sdk.play.fun/latest"></script>
 <style>
@@ -611,24 +612,40 @@ let sdkReady = false;
 async function initPlayFunSDK() {
   try {
     if (typeof OpenGameSDK !== 'undefined') {
+      console.log('[Play.fun] Initializing SDK...');
       playFunSDK = new OpenGameSDK({
         gameId: 'a46a11ca-5ddf-4334-b4af-79d60c7dc42e',
         ui: { usePointsWidget: true },
       });
+
+      // Listen for SDK events
+      playFunSDK.on('OnReady', () => {
+        console.log('[Play.fun] SDK OnReady event fired');
+      });
+
+      playFunSDK.on('pointsSynced', (points) => {
+        console.log('[Play.fun] Points synced:', points);
+      });
+
+      playFunSDK.on('error', (err) => {
+        console.error('[Play.fun] SDK error:', err);
+      });
+
       await playFunSDK.init();
       sdkReady = true;
-      console.log('Play.fun SDK initialized!');
+      console.log('[Play.fun] SDK initialized successfully!');
     } else {
-      console.warn('OpenGameSDK not found');
+      console.warn('[Play.fun] OpenGameSDK not found - is the script loaded?');
     }
   } catch (e) {
-    console.warn('Play.fun SDK init failed:', e);
+    console.error('[Play.fun] SDK init failed:', e);
   }
 }
 
 function addPlayFunPoints(points) {
   if (sdkReady && playFunSDK) {
     playFunSDK.addPoints(points);
+    console.log('[Play.fun] Added points:', points);
   }
 }
 
@@ -636,15 +653,19 @@ async function savePlayFunPoints() {
   if (sdkReady && playFunSDK) {
     try {
       await playFunSDK.savePoints();
-      console.log('Points saved to Play.fun!');
+      console.log('[Play.fun] Points saved!');
     } catch (e) {
-      console.warn('Failed to save points:', e);
+      console.warn('[Play.fun] Failed to save points:', e);
     }
   }
 }
 
-// Initialize SDK on load
-initPlayFunSDK();
+// Initialize SDK when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPlayFunSDK);
+} else {
+  initPlayFunSDK();
+}
 
 // Auto-save points every 30 seconds
 setInterval(() => {
